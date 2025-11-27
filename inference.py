@@ -5,24 +5,28 @@ from io import StringIO
 import os
 import sys
 import traceback
+import subprocess
 
 def model_fn(model_dir):
-    """Load model and feature columns."""
+    """Load model with dependency installation."""
+    import os, sys, subprocess
+    print(f"Loading model from: {model_dir}")
+    print(f"Files: {os.listdir(model_dir)}")
+    
+    # Install if missing (safe, idempotent)
     try:
-        print("Loading model from:", model_dir)
-        print("Files in model_dir:", os.listdir(model_dir))
-        
-        model = joblib.load(os.path.join(model_dir, "model.pkl"))
-        features = joblib.load(os.path.join(model_dir, "features.pkl"))
-        
-        print(f"Model loaded successfully: {type(model)}")
-        print(f"Number of features: {len(features)}")
-        
-        return {"model": model, "features": features}
-    except Exception as e:
-        print(f"Error loading model: {str(e)}")
-        print(traceback.format_exc())
-        raise
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "flaml", "lightgbm", "xgboost"], 
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print("✓ Dependencies installed")
+    except:
+        print("Dependencies already exist or install skipped")
+    
+    import joblib
+    model = joblib.load(os.path.join(model_dir, "model.pkl"))
+    features = joblib.load(os.path.join(model_dir, "features.pkl"))
+    print(f"✓ Model loaded: {type(model).__name__}, {len(features)} features")
+    
+    return {"model": model, "features": features}
 
 def input_fn(request_body, content_type="text/csv"):
     """Parse CSV input."""
